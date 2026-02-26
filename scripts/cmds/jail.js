@@ -1,90 +1,62 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 
-const baseApiUrl = async () => {
-        const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
-        return base.data.mahmud;
-};
-
 module.exports = {
-        config: {
-                name: "jail",
-                aliases: ["জেল"],
-                version: "1.7",
-                author: "MahMUD",
-                countDown: 10,
-                role: 0,
-                description: {
-                        bn: "কাউকে জেলে পাঠানোর এডিট ছবি তৈরি করুন",
-                        en: "Create a jail edit image of someone",
-                        vi: "Tạo ảnh chỉnh sửa bỏ tù ai đó"
-                },
-                category: "Tag Fun",
-                guide: {
-                        bn: '   {pn} <মেনশন/রিপ্লাই/UID>: কাউকে জেলে পাঠাতে ব্যবহার করুন',
-                        en: '   {pn} <mention/reply/UID>: Use to put someone in jail',
-                        vi: '   {pn} <đề cập/trả lời/UID>: Sử dụng để tống ai đó vào tù'
-                }
-        },
+  config: {
+    name: "jail",
+    aliases: ["prison"],
+    version: "1.0",
+    author: "Saimx69x",
+    countDown: 5,
+    role: 0,
+    description: "Put someone in jail 😆",
+    category: "Tag Fun",
+    guide: {
+      en: "{pn} @tag or reply to a message"
+    }
+  },
 
-        langs: {
-                bn: {
-                        noTarget: "× বেবি, কাকে জেলে পাঠাবে? মেনশন, রিপ্লাই বা UID দাও! 🐸",
-                        success: "𝐄𝐟𝐟𝐞𝐜𝐭 𝐣𝐚𝐢𝐥 𝐬𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 𝐛𝐚𝐛𝐲 <😘",
-                        error: "× সমস্যা হয়েছে: %1। প্রয়োজনে Contact Kakashi"
-                },
-                en: {
-                        noTarget: "× Baby, mention, reply, or provide UID of the target! 🐸",
-                        success: "𝐄𝐟𝐟𝐞𝐜𝐭 𝐣𝐚𝐢𝐥 𝐬𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 𝐛𝐚𝐛𝐲 <😘",
-                        error: "× API error: %1. Contact Kakashi for help."
-                },
-                vi: {
-                        noTarget: "× Cưng ơi, hãy đề cập, phản hồi hoặc cung cấp UID! 🐸",
-                        success: "𝐄𝐟𝐟𝐞𝐜𝐭 𝐣𝐚𝐢𝐥 𝐭𝐡𝐚̀𝐧𝐡 𝐜𝐨̂𝐧𝐠 <😘",
-                        error: "× Lỗi: %1. Liên hệ Kakashi để hỗ trợ."
-                }
-        },
+  langs: {
+    en: {
+      noTarget: "⚠️ You must tag someone or reply to their message."
+    }
+  },
 
-        onStart: async function ({ api, event, args, message, getLang }) {
-                const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
-                if (this.config.author !== authorName) {
-                        return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
-                }
+  onStart: async function ({ event, message, usersData, getLang }) {
+    try {
+      let targetID;
 
-                const { threadID, messageID, messageReply, mentions } = event;
-                let id2;
-                if (messageReply) id2 = messageReply.senderID;
-                else if (Object.keys(mentions).length > 0) id2 = Object.keys(mentions)[0];
-                else if (args[0]) id2 = args[0];
-                else return message.reply(getLang("noTarget"));
+      if (Object.keys(event.mentions).length > 0) {
+        targetID = Object.keys(event.mentions)[0];
+      } else if (event.messageReply) {
+        targetID = event.messageReply.senderID;
+      }
 
-                const filePath = path.join(__dirname, "cache", `jail_${id2}_${Date.now()}.png`);
-                if (!fs.existsSync(path.dirname(filePath))) fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      if (!targetID) return message.reply(getLang("noTarget"));
 
-                try {
-                        
-                        api.setMessageReaction("⏳", messageID, () => {}, true);
+      const userInfo = await usersData.getName(targetID);
+      const avatarURL = await usersData.getAvatarUrl(targetID);
 
-                        const baseUrl = await baseApiUrl();
-                        const url = `${baseUrl}/api/dig?type=jail&user=${id2}`;
-                        const response = await axios.get(url, { responseType: "arraybuffer" });
-                        
-                        fs.writeFileSync(filePath, response.data);
+      const apiBaseRes = await axios.get("https://raw.githubusercontent.com/Saim-x69x/sakura/main/ApiUrl.json");
+      const apiBase = apiBaseRes.data?.apiv1;
+      if (!apiBase) return message.reply("❌ API base URL not found in ApiUrl.json.");
 
-                        return message.reply({
-                                body: getLang("success"),
-                                attachment: fs.createReadStream(filePath)
-                        }, () => {
-                                api.setMessageReaction("✅", messageID, () => {}, true);
-                                if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        });
+      const apiURL = `${apiBase}/api/jail?url=${encodeURIComponent(avatarURL)}`;
+      const imgPath = path.join(__dirname, "tmp", `${targetID}_jail.png`);
 
-                } catch (err) {
-                        console.error("Jail Error:", err);
-                        api.setMessageReaction("❌", messageID, () => {}, true);
-                        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-                        return message.reply(getLang("error", err.message));
-                }
-        }
+      const response = await axios.get(apiURL, { responseType: "arraybuffer" });
+      await fs.outputFile(imgPath, response.data);
+
+      await message.reply({
+        body: `🚔 ${userInfo} is now behind bars!`,
+        attachment: fs.createReadStream(imgPath)
+      });
+
+      fs.unlinkSync(imgPath);
+    } catch (err) {
+      console.error(err);
+      message.reply("❌ Failed to generate jail image. Please try again later.");
+    }
+  }
 };

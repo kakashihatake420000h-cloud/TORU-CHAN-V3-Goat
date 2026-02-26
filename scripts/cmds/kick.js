@@ -1,56 +1,69 @@
+const fs = require("fs-extra");
+const path = require("path");
+const axios = require("axios");
+
 module.exports = {
-	config: {
-		name: "kick",
-		version: "1.3",
-		author: "NTKhang",
-		countDown: 5,
-		role: 1,
-		description: {
-			vi: "Kick thành viên khỏi box chat",
-			en: "Kick member out of chat box"
-		},
-		category: "Group",
-		guide: {
-			vi: "   {pn} @tags: dùng để kick những người được tag",
-			en: "   {pn} @tags: use to kick members who are tagged"
-		}
-	},
+  config: {
+    name: "kick",
+    version: "1.0.1",
+    hasPermssion: 0,
+    credits: "Hridoy",
+    description: "Kick the tagged friend",
+    category: "Tag Fun",
+    usages: "@tag",
+    cooldowns: 5
+  },
 
-	langs: {
-		vi: {
-			needAdmin: "Vui lòng thêm quản trị viên cho bot trước khi sử dụng tính năng này"
-		},
-		en: {
-			needAdmin: "Please add admin for bot before using this feature"
-		}
-	},
+  onStart: async function({ api, event }) {
+    try {
+      // Check mentions
+      if (!event.mentions || Object.keys(event.mentions).length === 0)
+        return api.sendMessage("❌ Please tag someone to kick!", event.threadID, event.messageID);
 
-	onStart: async function ({ message, event, args, threadsData, api, getLang }) {
-		const adminIDs = await threadsData.get(event.threadID, "adminIDs");
-		if (!adminIDs.includes(api.getCurrentUserID()))
-			return message.reply(getLang("needAdmin"));
-		async function kickAndCheckError(uid) {
-			try {
-				await api.removeUserFromGroup(uid, event.threadID);
-			}
-			catch (e) {
-				message.reply(getLang("needAdmin"));
-				return "ERROR";
-			}
-		}
-		if (!args[0]) {
-			if (!event.messageReply)
-				return message.SyntaxError();
-			await kickAndCheckError(event.messageReply.senderID);
-		}
-		else {
-			const uids = Object.keys(event.mentions);
-			if (uids.length === 0)
-				return message.SyntaxError();
-			if (await kickAndCheckError(uids.shift()) === "ERROR")
-				return;
-			for (const uid of uids)
-				api.removeUserFromGroup(uid, event.threadID);
-		}
-	}
+      const mentionID = Object.keys(event.mentions)[0];
+      const tagName = event.mentions[mentionID].replace("@", "");
+
+      // Kick GIF links
+      const gifs = [
+        "https://i.postimg.cc/65TSxJYD/2ce5a017f6556ff103bce87b273b89b7.gif",
+        "https://i.postimg.cc/65SP9jPT/Anime-083428-6224795.gif",
+        "https://i.postimg.cc/RFXP2XfS/jXOwoHx.gif",
+        "https://i.postimg.cc/jSPMRsNk/tumblr-nyc5ygy2a-Z1uz35lto1-540.gif"
+      ];
+
+      const randomGif = gifs[Math.floor(Math.random() * gifs.length)];
+
+      // Cache folder
+      const cacheDir = path.join(__dirname, "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+
+      const gifPath = path.join(cacheDir, "kick.gif");
+
+      // Download GIF
+      const response = await axios({ url: randomGif, method: "GET", responseType: "stream" });
+      const writer = fs.createWriteStream(gifPath);
+      response.data.pipe(writer);
+
+      writer.on("finish", () => {
+        api.sendMessage(
+          {
+            body: `🦵 ${tagName}, you just got kicked! 😆`,
+            mentions: [{ tag: tagName, id: mentionID }],
+            attachment: fs.createReadStream(gifPath)
+          },
+          event.threadID,
+          () => fs.existsSync(gifPath) && fs.unlinkSync(gifPath),
+          event.messageID
+        );
+      });
+
+      writer.on("error", () => {
+        api.sendMessage("❌ Failed to download kick GIF.", event.threadID, event.messageID);
+      });
+
+    } catch (err) {
+      console.error(err);
+      api.sendMessage("❌ An unexpected error occurred.", event.threadID, event.messageID);
+    }
+  }
 };

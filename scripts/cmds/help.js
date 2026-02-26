@@ -6,11 +6,11 @@ module.exports = {
   config: {
     name: "help",
     aliases: ["menu"],
-    version: "10.0",
-    author: "AKASH",
-    shortDescription: "Animated Help Menu With GIF",
+    version: "11.0",
+    author: "AKASH x HRIDOY",
+    shortDescription: "Animated Help Menu With Category Filter",
     category: "System",
-    guide: "{pn}help [command]"
+    guide: "{pn}help [command | all]"
   },
 
   onStart: async function ({ message, args, prefix, api }) {
@@ -19,8 +19,19 @@ module.exports = {
     const categories = {};
     const commands = [];
 
-    // ===== SINGLE COMMAND =====
-    if (args[0]) {
+    // ===== CATEGORY WHITELIST =====
+    const allowedCategories = [
+      "AI",
+      "Group",
+      "Image",
+      "Game",
+      "Love",
+     "Tag Fun",
+      "Media"
+    ];
+
+    // ===== SINGLE COMMAND INFO =====
+    if (args[0] && args[0] !== "all") {
       const cmd = commandsMap.get(args[0].toLowerCase());
       if (!cmd) return message.reply("❌ Command not found!");
 
@@ -34,9 +45,15 @@ module.exports = {
       );
     }
 
-    // ===== CATEGORIZE =====
+    // ===== BUILD CATEGORY SYSTEM =====
     for (let [name, cmd] of commandsMap) {
       const cat = cmd.config.category || "Others";
+
+      // If not using "all", filter category
+      if (args[0] !== "all") {
+        if (!allowedCategories.includes(cat)) continue;
+      }
+
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(name);
       commands.push(name);
@@ -45,7 +62,7 @@ module.exports = {
     for (let cat in categories)
       categories[cat].sort();
 
-    // ===== LOADING ANIMATION (NO EXTRA MESSAGE) =====
+    // ===== LOADING ANIMATION =====
     const loadingFrames = [
       "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐇𝐞𝐥𝐩 𝐌𝐞𝐧𝐮...\n\n█░░░░░░░░░ 10%",
       "⏳ 𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐇𝐞𝐥𝐩 𝐌𝐞𝐧𝐮...\n\n███░░░░░░░ 30%",
@@ -62,7 +79,7 @@ module.exports = {
       await api.editMessage(loadingFrames[i], loadingMsg.messageID);
     }
 
-    // ===== BUILD HELP MENU =====
+    // ===== BUILD HELP TEXT =====
     let msg = `╭──❏ 𝐂𝐮𝐬𝐭𝐨𝐦 𝐇𝐞𝐥𝐩 𝐌𝐞𝐧𝐮 ❏──╮\n`;
     msg += `│ ✧ Total Commands: ${commands.length}\n`;
     msg += `│ ✧ Prefix: ${prefix}\n`;
@@ -84,6 +101,7 @@ module.exports = {
     }
 
     msg += `⭔ Type ${prefix}help [command]\n`;
+    msg += `⭔ Type ${prefix}help all (Show All)\n\n`;
     msg += `╭─[⋆˚🦋k̶a̶k̶a̶s̶h̶i̶X̶t̶o̶r̶u̶🎀⋆˚]\n`;
     msg += `╰‣ Admin : Kakashi Hatake\n`;
     msg += `╰‣ Report : .callad (yourmsg)\n`;
@@ -113,7 +131,7 @@ module.exports = {
     if (!fs.existsSync(gifPath))
       await downloadGif(randomGifURL, gifPath);
 
-    // Remove loading message
+    // Remove loading
     await api.unsendMessage(loadingMsg.messageID);
 
     // Send final help
@@ -122,7 +140,7 @@ module.exports = {
       attachment: fs.createReadStream(gifPath)
     });
 
-    // ===== AUTO UNSEND AFTER 30s =====
+    // ===== AUTO DELETE AFTER 30s =====
     setTimeout(() => {
       api.unsendMessage(sent.messageID);
     }, 30000);
@@ -134,18 +152,14 @@ module.exports = {
 function downloadGif(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
-
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        fs.unlink(dest, () => {});
-        return reject(new Error("Download failed"));
-      }
-
-      res.pipe(file);
-      file.on("finish", () => file.close(resolve));
-    }).on("error", (err) => {
-      fs.unlink(dest, () => {});
+    https.get(url, response => {
+      response.pipe(file);
+      file.on("finish", () => {
+        file.close(resolve);
+      });
+    }).on("error", err => {
+      fs.unlink(dest);
       reject(err);
     });
   });
-}
+      }
