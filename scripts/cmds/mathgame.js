@@ -1,4 +1,5 @@
 const axios = require("axios");
+const money = require("../../utils/money"); // ⚠️ path ঠিক করবি
 
 const getBaseApi = async () => {
   const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
@@ -18,7 +19,7 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, usersData }) {
+  onStart: async function ({ api, event }) {
     const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
     if (module.exports.config.author !== obfuscatedAuthor) {
       return api.sendMessage("❌ You are not authorized to change the author name.", event.threadID, event.messageID);
@@ -73,15 +74,22 @@ module.exports = {
     const reply = event.body.trim().toLowerCase();
     const correctAns = correctAnswer.toLowerCase();
 
-    const userData = await usersData.get(author);
     const rewardCoins = 500;
     const rewardExp = 121;
 
     await api.unsendMessage(Reply.messageID);
+
     if (reply === correctAns) {
-      userData.money += rewardCoins;
-      userData.exp += rewardExp;
-      await usersData.set(author, userData);
+      // ✅ coin → money.js
+      money.add(author, rewardCoins);
+
+      // ✅ exp → usersData
+      const userData = await usersData.get(author);
+      await usersData.set(author, {
+        money: userData.money,
+        exp: userData.exp + rewardExp,
+        data: userData.data
+      });
 
       return api.sendMessage(
         `✅ | Correct answer baby\nYou earned +${rewardCoins} coins & +${rewardExp} exp!`,

@@ -1,4 +1,5 @@
 const axios = require("axios");
+const money = require("../../utils/money"); // ⚠️ path ঠিক করবি
 
 const mahmud = async () => {
   const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
@@ -22,12 +23,12 @@ module.exports = {
     guide: { en: "{pn} [en/bn]" }
   },
 
-  onStart: async function ({ api, event, usersData, args }) {
-      const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
-      if (module.exports.config.author !== obfuscatedAuthor) {
+  onStart: async function ({ api, event, args }) {
+    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
+    if (module.exports.config.author !== obfuscatedAuthor) {
       return api.sendMessage("You are not authorized to change the author name.\n", event.threadID, event.messageID);
-     }
-    
+    }
+
     try {
       const input = args[0]?.toLowerCase() || "bn";
       const category = (input === "en" || input === "english") ? "english" : "bangla";
@@ -66,6 +67,7 @@ module.exports = {
 
   onReply: async function ({ event, api, Reply, usersData }) {
     const { correctAnswer, author, messageID } = Reply;
+
     if (event.senderID !== author)
       return api.sendMessage("⚠️ This quiz isn’t yours baby 🐸", event.threadID, event.messageID);
 
@@ -73,18 +75,33 @@ module.exports = {
 
     const userReply = event.body.trim().toLowerCase();
     const correct = correctAnswer.toLowerCase();
-    const userData = await usersData.get(author);
 
     if (userReply === correct || userReply === correct[0]) {
-      const rewardCoins = 500, rewardExp = 121;
+      const rewardCoins = 500;
+      const rewardExp = 121;
+
+      // ✅ coin → money.js
+      money.add(author, rewardCoins);
+
+      // ✅ exp → usersData
+      const userData = await usersData.get(author);
       await usersData.set(author, {
-        money: userData.money + rewardCoins,
+        money: userData.money,
         exp: userData.exp + rewardExp,
         data: userData.data
       });
-      return api.sendMessage(`✅ | Correct answer baby\nYou earned +${rewardCoins} coins & +${rewardExp} exp!`, event.threadID, event.messageID);
+
+      return api.sendMessage(
+        `✅ | Correct answer baby\nYou earned +${rewardCoins} coins & +${rewardExp} exp!`,
+        event.threadID,
+        event.messageID
+      );
     } else {
-      return api.sendMessage(`❌ | Wrong answer baby\nThe Correct answer was: ${correctAnswer}`, event.threadID, event.messageID);
+      return api.sendMessage(
+        `❌ | Wrong answer baby\nThe Correct answer was: ${correctAnswer}`,
+        event.threadID,
+        event.messageID
+      );
     }
   }
 };

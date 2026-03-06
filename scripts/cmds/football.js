@@ -1,4 +1,5 @@
 const axios = require("axios");
+const money = require("../../utils/money"); // ⚠️ path ঠিক করবি
 
 const baseApiUrl = async () => {
   const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
@@ -12,22 +13,22 @@ const baseApiUrl = async () => {
 
 module.exports = {
   config: {
-    name: "footballgame",
+    name: "football",
     aliases: ["football"],
     version: "1.7",
     author: "MahMUD",
     countDown: 10,
     role: 0,
     category: "Game",
-    guide: {
-      en: "{pn}"
-    }
+    guide: { en: "{pn}" }
   },
 
   onReply: async function ({ api, event, Reply, usersData }) {
-    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68);  if (module.exports.config.author !== obfuscatedAuthor) {
-    return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
-  }
+    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68);
+    if (module.exports.config.author !== obfuscatedAuthor) {
+      return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
+    }
+
     const { footballNames, author, messageID } = Reply;
     const getCoin = 500;
     const getExp = 121;
@@ -38,25 +39,26 @@ module.exports = {
 
     const reply = event.body.trim().toLowerCase();
     const isCorrect = footballNames.some(name => name.toLowerCase() === reply);
-    const userData = await usersData.get(event.senderID);
 
     await api.unsendMessage(messageID);
 
     if (isCorrect) {
-      try {
-        await usersData.set(event.senderID, {
-          money: userData.money + getCoin,
-          exp: userData.exp + getExp
-        });
+      // ✅ coin → money.js
+      money.add(event.senderID, getCoin);
 
-        return api.sendMessage(
-          `✅ | Correct answer baby.\nYou have earned ${getCoin} coins and ${getExp} exp.`,
-          event.threadID,
-          event.messageID
-        );
-      } catch (err) {
-        console.log("Error:", err.message);
-      }
+      // ✅ exp → usersData
+      const userData = await usersData.get(event.senderID);
+      await usersData.set(event.senderID, {
+        money: userData.money,
+        exp: userData.exp + getExp,
+        data: userData.data
+      });
+
+      return api.sendMessage(
+        `✅ | Correct answer baby.\nYou have earned ${getCoin} coins and ${getExp} exp.`,
+        event.threadID,
+        event.messageID
+      );
     } else {
       return api.sendMessage(
         `❌ | Wrong Answer baby.\nCorrect answer was: ${footballNames.join(" / ")}`,
@@ -66,16 +68,13 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, usersData }) {
-    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
+  onStart: async function ({ api, event }) {
+    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68);
     if (module.exports.config.author !== obfuscatedAuthor) {
       return api.sendMessage("You are not authorized to change the author name.\n", event.threadID, event.messageID);
     }
 
     try {
-      const { senderID } = event;
-      const userData = await usersData.get(senderID);
-
       const apiUrl = await baseApiUrl();
       const response = await axios.get(`${apiUrl}/api/football`);
       const { name, imgurLink } = response.data.football;
@@ -85,7 +84,7 @@ module.exports = {
         url: imgurLink,
         method: "GET",
         responseType: "stream",
-        headers: { 'User-Agent': 'Mozilla/5.0' }
+        headers: { "User-Agent": "Mozilla/5.0" }
       });
 
       api.sendMessage(
@@ -100,7 +99,7 @@ module.exports = {
             commandName: this.config.name,
             type: "reply",
             messageID: info.messageID,
-            author: senderID,
+            author: event.senderID,
             footballNames
           });
 

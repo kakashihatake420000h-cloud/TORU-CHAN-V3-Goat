@@ -2,62 +2,60 @@ const axios = require("axios");
 const money = require("../../utils/money"); // ⚠️ path ঠিক করবি
 
 const baseApiUrl = async () => {
-  const base = await axios.get(
-    "https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json"
-  );
+  const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
   return base.data.mahmud;
 };
 
 module.exports = {
   config: {
-    name: "freefire",
-    aliases: ["ffqz", "ffgame", "ffquiz", "ff"],
+    name: "flaggame",
+    aliases: ["flag"],
     version: "1.7",
     author: "MahMUD",
     countDown: 10,
     role: 0,
     description: {
-      bn: "ফ্রি ফায়ার ক্যারেক্টার দেখে নাম অনুমান করার খেলা",
-      en: "Guess the Free Fire character name by looking at the image",
-      vi: "Đoán tên nhân vật Free Fire bằng cách nhìn vào hình ảnh"
+      bn: "পতাকা দেখে দেশের নাম অনুমান করার খেলা",
+      en: "Guess the country name by looking at the flag",
+      vi: "Đoán tên quốc gia bằng cách nhìn vào lá cờ"
     },
     category: "Game",
     guide: {
-      bn: '   {pn}: গেমটি শুরু করতে লিখুন',
-      en: '   {pn}: Type to start the game',
-      vi: '   {pn}: Nhập để bắt đầu trò chơi'
+      bn: "   {pn}: গেমটি শুরু করতে লিখুন",
+      en: "   {pn}: Type to start the game",
+      vi: "   {pn}: Nhập để bắt đầu trò chơi"
     }
   },
 
   langs: {
     bn: {
-      start: "একটি ফ্রি ফায়ার ক্যারেক্টার এসেছে! নাম বলতে পারো বেবি?",
+      start: "🌍 | একটি পতাকার ছবি এসেছে! দেশের নামটি বলো তো বেবি?",
       correct: "✅ | একদম সঠিক উত্তর বেবি!\n\nতুমি জিতেছো %1 কয়েন এবং %2 এক্সপি।",
-      wrong: "❌ | উত্তরটি ভুল হয়েছে বেবি!\n\n🔥 সঠিক উত্তর ছিল: %1",
+      wrong: "🥺 | উত্তরটি ভুল হয়েছে বেবি!\n\n🏳️ সঠিক উত্তর ছিল: %1",
       notYour: "× বেবি, এটি তোমার জন্য নয়! নিজের জন্য গেম শুরু করো। >🐸",
       error: "× সমস্যা হয়েছে: %1। প্রয়োজনে Contact Kakashi।"
     },
     en: {
-      start: "A random Free Fire character has appeared! Guess the name.",
+      start: "🌍 | A random flag has appeared! Guess the country name, baby.",
       correct: "✅ | Correct answer, baby!\n\nYou have earned %1 coins and %2 exp.",
-      wrong: "❌ | Wrong Answer, baby!\n\nThe Correct answer was: %1",
-      notYour: "× This is not your game, baby! >🐸",
+      wrong: "🥺 | Wrong Answer, baby!\n\nThe Correct answer was: %1",
+      notYour: "× This is not your flag, baby! >🐸",
       error: "× API error: %1. Contact Kakashi for help."
     },
     vi: {
-      start: "🔫 | Một nhân vật Free Fire đã xuất hiện! Đoán tên đi cưng. 😘",
-      correct: "✅ | Đáp án chính xác cưng ơi!\n\nBạn nhận được %1 xu và %2 exp.",
-      wrong: "❌ | Sai rồi cưng ơi!\n\n🔥 Đáp án đúng là: %1",
-      notYour: "× Đây không phải trò chơi của bạn cưng à! >🐸",
+      start: "🌍 | Một lá cờ đã xuất hiện! Đoán tên quốc gia đi cưng.",
+      correct: "✅ | Đáp án chính xác cưng ơi!\n\n✨ Bạn nhận được %1 xu và %2 exp.",
+      wrong: "🥺 | Sai rồi cưng ơi!\n\n🏳️ Đáp án đúng là: %1",
+      notYour: "× Đây không phải lá cờ của bạn cưng à! >🐸",
       error: "× Lỗi: %1. Liên hệ Kakashi để được hỗ trợ."
     }
   },
 
   onReply: async function ({ api, event, Reply, usersData, getLang }) {
-    const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68); 
+    const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
     if (module.exports.config.author !== authorName) return;
 
-    const { character, author } = Reply;
+    const { flag, author } = Reply;
     const getCoin = 500;
     const getExp = 121;
 
@@ -66,41 +64,42 @@ module.exports = {
     }
 
     const reply = event.body.trim().toLowerCase();
-
     await api.unsendMessage(Reply.messageID);
 
-    if (reply === character.toLowerCase()) {
-      // ✅ money.js দিয়ে টাকা add
+    if (reply === flag.toLowerCase()) {
+      // ✅ coin money.js এ যাবে
       money.add(event.senderID, getCoin);
 
-      // exp আগের মত usersData তেই থাকবে
+      // exp usersData তেই থাকবে
       const userData = await usersData.get(event.senderID);
       await usersData.set(event.senderID, {
-        money: userData.money, // money আর এখানে handle করছিনা
+        money: userData.money,
         exp: userData.exp + getExp,
         data: userData.data
       });
 
       return api.sendMessage(getLang("correct", getCoin, getExp), event.threadID, event.messageID);
     } else {
-      return api.sendMessage(getLang("wrong", character), event.threadID, event.messageID);
+      return api.sendMessage(getLang("wrong", flag), event.threadID, event.messageID);
     }
   },
 
   onStart: async function ({ api, event, getLang }) {
-    const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68); 
-    if (this.config.author !== authorName) return;
-
     try {
-      const apiUrl = await baseApiUrl();
-      const apiRes = await axios.get(`${apiUrl}/api/freefire`);
-      const randomCharacter = apiRes.data?.freefire;
+      const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
+      if (this.config.author !== authorName) return;
 
-      if (!randomCharacter || !randomCharacter.name || !randomCharacter.imgurLink) return;
+      const apiUrl = await baseApiUrl();
+      const response = await axios.get(`${apiUrl}/api/flag`, {
+        responseType: "json",
+        headers: { "User-Agent": "Mozilla/5.0" }
+      });
+
+      const { link, country } = response.data;
 
       const imageStream = await axios({
-        url: randomCharacter.imgurLink,
         method: "GET",
+        url: link,
         responseType: "stream",
         headers: { "User-Agent": "Mozilla/5.0" }
       });
@@ -112,13 +111,14 @@ module.exports = {
         },
         event.threadID,
         (err, info) => {
-          if (err) return;
+          if (err) return api.sendMessage("❌ Failed to send flag image.", event.threadID);
+
           global.GoatBot.onReply.set(info.messageID, {
             commandName: this.config.name,
             type: "reply",
             messageID: info.messageID,
             author: event.senderID,
-            character: randomCharacter.name
+            flag: country
           });
 
           setTimeout(() => {
@@ -128,6 +128,7 @@ module.exports = {
         event.messageID
       );
     } catch (error) {
+      console.error("FlagGame Error:", error.message);
       return api.sendMessage(getLang("error", error.message), event.threadID, event.messageID);
     }
   }
