@@ -6,7 +6,7 @@ module.exports = {
     role: 0,
     shortDescription: "Join support group",
     longDescription: "Join official bot support group",
-    category: "info",
+    category: "Utility",
     guide: "{pn}"
   },
 
