@@ -5,7 +5,7 @@ const dbPath = path.join(__dirname, "../../data/bot.json");
 
 module.exports = {
   config: {
-    name: "top",
+    name: "top2",
     version: "4.5",
     author: "SiFu + Integrated by ChatGPT",
     category: "Group",
