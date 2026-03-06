@@ -2,10 +2,11 @@ const os = require("os");
 const { createCanvas, loadImage } = require("canvas");
 const fs = require("fs");
 const path = require("path");
+const { utils } = global;
 
 const W = 490, H = 840;
 const AVATAR1 = "https://i.imgur.com/oEh5VEx.jpeg";
-const FALLBACK_AVATAR = "https://i.ibb.co/MC6bT5V/default-avatar.png"; // fallback if error
+const FALLBACK_AVATAR = "https://i.ibb.co/MC6bT5V/default-avatar.png";
 
 function formatUptime(ms) {
   const totalSeconds = Math.floor(ms / 1000);
@@ -19,7 +20,6 @@ function formatUptime(ms) {
 async function drawDodecagonAvatar(ctx, url, x, y, size, ringColors) {
   const sides = 12;
   const radius = size / 2;
-
   for (let i = 0; i < ringColors.length; i++) {
     ctx.beginPath();
     for (let j = 0; j < sides; j++) {
@@ -57,7 +57,6 @@ async function drawDodecagonAvatar(ctx, url, x, y, size, ringColors) {
 }
 
 async function drawPage1(ctx) {
-  
   const gradient = ctx.createLinearGradient(0, 0, 0, H);
   gradient.addColorStop(0, "#4b006e");
   gradient.addColorStop(1, "#1a001f");
@@ -89,7 +88,7 @@ async function drawPage1(ctx) {
   ctx.fillStyle = "#ff99cc";
   ctx.shadowColor = "#ff33aa";
   ctx.shadowBlur = 25;
-  ctx.fillText("Supreme Shinobi 🥇⚜️", W / 2, 295); // slightly lower
+  ctx.fillText("Supreme Shinobi 🥇⚜️", W / 2, 295);
 
   ctx.font = "italic 20px Arial";
   ctx.fillStyle = "#ff66cc";
@@ -135,27 +134,44 @@ async function drawPage1(ctx) {
 module.exports = {
   config: {
     name: "info",
-    aliases: ["in4", "ownerinfo"],
     version: "1.0",
-    author: "Saimx69x",
-    countDown: 5,
-    role: 0,
-    shortDescription: "Owner info",
-    category: "Admin"
+    author: "Hridoy",
+    shortDescription: "Canvas Owner Card with loading",
+    category: "Utility"
   },
 
-  onStart: async function ({ message }) {
+  onStart: async function ({ api, event }) {
+
+    const loadingFrames = [
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▱▱▱▱▱▱▱▱▱ 10%",
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▰▰▱▱▱▱▱▱▱ 30%",
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▰▰▰▰▱▱▱▱▱ 50%",
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▰▰▰▰▰▰▱▱▱ 70%",
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▰▰▰▰▰▰▰▰▱ 90%",
+      "𝐋𝐨𝐚𝐝𝐢𝐧𝐠 𝐂𝐚𝐫𝐝...\n▰▰▰▰▰▰▰▰▰▰ 100%"
+    ];
+
+    const loadingMsg = await api.sendMessage(loadingFrames[0], event.threadID);
+    for (let i = 1; i < loadingFrames.length; i++) {
+      await new Promise(r => setTimeout(r, 800));
+      api.editMessage(loadingFrames[i], loadingMsg.messageID);
+    }
+
+    setTimeout(() => api.unsendMessage(loadingMsg.messageID), 900);
+
+    // ===== Canvas draw =====
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext("2d");
 
     await drawPage1(ctx);
 
+    const cacheDir = path.join(__dirname, "cache");
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
+
+    const imgPath = path.join(cacheDir, `ownercanvas_${Date.now()}.png`);
     const buffer = canvas.toBuffer("image/png");
-    const dir = path.join(__dirname, "cache");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    const filePath = path.join(dir, `info_page.png`);
-    fs.writeFileSync(filePath, buffer);
-    return message.reply({ attachment: fs.createReadStream(filePath) });
+    fs.writeFileSync(imgPath, buffer);
+
+    api.sendMessage({ attachment: fs.createReadStream(imgPath) }, event.threadID, () => fs.unlinkSync(imgPath));
   }
 };
-                            

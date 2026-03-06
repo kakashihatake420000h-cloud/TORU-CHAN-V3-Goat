@@ -14,7 +14,7 @@ module.exports = {
     countDown: 15,
     role: 0,
     description: { en: "Balance leaderboard with glow + fixed loading animation" },
-    category: "Game",
+    category: "economy",
     guide: { en: "{pn} [page number]" },
     envConfig: {
       ACCESS_TOKEN: "6628568379%7Cc1e620fa708a1d5696fb991c1bde5662"
