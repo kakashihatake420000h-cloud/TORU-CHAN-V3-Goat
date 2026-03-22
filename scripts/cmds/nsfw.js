@@ -1,85 +1,87 @@
-const { config } = global.GoatBot;
-const { writeFileSync } = require("fs-extra");
+const axios = require('axios');
 
 module.exports = {
-        config: {
-                name: "nsfw",
-                version: "1.7",
-                author: "MahMUD",
-                countDown: 5,
-                role: 2,
-                description: {
-                        bn: "NSFW পারমিশন যোগ, অপসারণ বা তালিকা দেখুন",
-                        en: "Add, remove, or list NSFW permitted users"
-                },
-                category: "Admin",
-                guide: { bn: '{pn} add/remove/list [ID/@tag]', en: '{pn} add/remove/list [ID/@tag]' }
-        },
+  config: {
+    name: "nsfw",
+    aliases: [],
+    version: "1.1",
+    author: "Hridoy",
+    countDown: 10,
+    role: 0,  // 0 = সবাই, চাইলে 1 করে admin only করো
+    shortDescription: "Interactive NSFW pic selector",
+    longDescription: "NSFW category list দেখায়, তুমি reply করে category select করলে pic send করে। Nights API use করে।",
+    category: "nsfw",
+    guide: {
+      bd: "{pn}\n\nCommand দিলে category list আসবে। Reply করে category নাম লিখো (যেমন: ass বা hentai)।"
+    }
+  },
 
-        langs: {
-                bn: {
-                        added: "🔞 | সফলভাবে %1 জনকে NSFW পারমিশন দেওয়া হয়েছে:\n%2",
-                        already: "\n⚠️ | %1 জন আগে থেকেই পারমিশন প্রাপ্ত ছিল:\n%2",
-                        missingAdd: "⚠️ | বেবি, NSFW পারমিশন দিতে আইডি দিন অথবা ট্যাগ করুন!",
-                        removed: "❌ | সফলভাবে %1 জনের NSFW পারমিশন সরানো হয়েছে:\n%2",
-                        notIn: "⚠️ | %1 জন NSFW তালিকায় ছিল না:\n%2",
-                        list: "🔞 | NSFW পারমিশন প্রাপ্ত ইউজার তালিকা:\n\n%1"
-                },
-                en: {
-                        added: "🔞 | Added NSFW permission for %1 users:\n%2",
-                        already: "\n⚠️ | %1 users already had permission:\n%2",
-                        missingAdd: "⚠️ | Provide ID or tag for NSFW access!",
-                        removed: "❌ | Removed NSFW permission for %1 users:\n%2",
-                        notIn: "⚠️ | %1 users were not in the list:\n%2",
-                        list: "🔞 | NSFW Permitted Users List:\n\n%1"
-                }
-        },
+  onStart: async function ({ message, api, event }) {
+    const categories = [
+      "Anal", "Ass", "Boobs", "Gonewild", "Hanal", "Hass", "Hboobs", "Hentai",
+      "Hkitsune", "Hmidriff", "Hneko", "Hthigh", "Neko", "Paizuri", "Pgif",
+      "Pussy", "Tentacle", "Thigh", "Yaoi"
+    ];
 
-        onStart: async function ({ api, message, args, usersData, event, getLang }) {
-                const action = args[0]?.toLowerCase();
-                const { threadID, messageID } = event;
-                if (!config.nsfwUser) config.nsfwUser = [];
+    const listMsg = `😈 NSFW Category Select করো!\n\nAvailable options:\n${categories.map(cat => `• ${cat}`).join("\n")}\n\nReply করে শুধু category নাম লিখো (case insensitive), pic আসবে! 🔥\n\nExample reply: ass`;
 
-                switch (action) {
-                        case "add": {
-                                if (args[1] || event.messageReply) {
-                                        let uids = Object.keys(event.mentions).length > 0 ? Object.keys(event.mentions) : 
-                                                   event.messageReply ? [event.messageReply.senderID] : args.filter(arg => !isNaN(arg));
+    return message.reply(listMsg, (err, info) => {
+      if (!err) {
+        global.GoatBot.onReply.set(info.messageID, {
+          commandName: this.config.name,
+          type: "select_category",
+          messageID: info.messageID,
+          author: event.senderID
+        });
+      }
+    });
+  },
 
-                                        const notInIds = [], inIds = [];
-                                        for (const uid of uids) config.nsfwUser.includes(uid) ? inIds.push(uid) : notInIds.push(uid);
+  onReply: async function ({ message, event, Reply, api }) {
+    if (Reply.commandName !== this.config.name || Reply.author !== event.senderID) return;
 
-                                        config.nsfwUser.push(...notInIds);
-                                        const getNames = await Promise.all(uids.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
-                                        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+    const userReply = event.body.trim().toLowerCase();
+    const categories = [
+      "anal", "ass", "boobs", "gonewild", "hanal", "hass", "hboobs", "hentai",
+      "hkitsune", "hmidriff", "hneko", "hthigh", "neko", "paizuri", "pgif",
+      "pussy", "tentacle", "thigh", "yaoi"
+    ];
 
-                                        const response = (notInIds.length > 0 ? getLang("added", notInIds.length, getNames.filter(u => notInIds.includes(u.uid)).map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "")
-                                                + (inIds.length > 0 ? getLang("already", inIds.length, getNames.filter(u => inIds.includes(u.uid)).map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "");
-                                        return api.sendMessage(response, threadID, messageID);
-                                } else return api.sendMessage(getLang("missingAdd"), threadID, messageID);
-                        }
-                        case "remove": {
-                                if (args[1] || event.messageReply) {
-                                        let uids = Object.keys(event.mentions).length > 0 ? Object.keys(event.mentions) : 
-                                                   event.messageReply ? [event.messageReply.senderID] : args.filter(arg => !isNaN(arg));
+    const selected = categories.find(cat => cat === userReply);
 
-                                        const inIds = [], notInIds = [];
-                                        for (const uid of uids) config.nsfwUser.includes(uid) ? inIds.push(uid) : notInIds.push(uid);
+    if (!selected) {
+      return message.reply(`Invalid selection bro! List থেকে একটা দাও:\n\nExample: ass, hentai, pussy ইত্যাদি\n\nআবার reply করো।`);
+    }
 
-                                        for (const uid of inIds) config.nsfwUser.splice(config.nsfwUser.indexOf(uid), 1);
-                                        const getNames = await Promise.all(uids.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
-                                        writeFileSync(global.client.dirConfig, JSON.stringify(config, null, 2));
+    const apiKey = "5ZW1vsrOnj-utK8iWK8MQFFcpZHFdwc-cmhBjJjeYU"; // .env use করো recommended
 
-                                        const response = (inIds.length > 0 ? getLang("removed", inIds.length, getNames.filter(u => inIds.includes(u.uid)).map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "")
-                                                + (notInIds.length > 0 ? getLang("notIn", notInIds.length, getNames.filter(u => notInIds.includes(u.uid)).map(({ uid, name }) => `• ${name} (${uid})`).join("\n")) : "");
-                                        return api.sendMessage(response, threadID, messageID);
-                                } else return api.sendMessage(getLang("missingAdd"), threadID, messageID);
-                        }
-                        case "list": {
-                                const getNames = await Promise.all(config.nsfwUser.map(uid => usersData.getName(uid).then(name => ({ uid, name }))));
-                                return api.sendMessage(getLang("list", getNames.map(({ uid, name }) => `• ${name}\n  └ ID: ${uid}`).join("\n\n")), threadID, messageID);
-                        }
-                        default: return message.SyntaxError();
-                }
-        }
+    try {
+      const url = `https://api.night-api.com/images/nsfw/${selected}`;
+      const response = await axios.get(url, {
+        headers: { authorization: apiKey }
+      });
+
+      if (response.status !== 200 || !response.data?.content?.url) {
+        return message.reply("Pic load হচ্ছে না 😔 Try again!");
+      }
+
+      const imageUrl = response.data.content.url;
+      const attachment = await global.utils.getStreamFromURL(imageUrl);
+
+      await api.sendMessage({
+        body: `🔞 ${selected.toUpperCase()} category থেকে random pic! 😈\nEnjoy bro 🔥\nNights API powered`,
+        attachment: attachment
+      }, event.threadID, event.messageID);
+
+      // Clean up reply listener
+      global.GoatBot.onReply.delete(Reply.messageID);
+
+    } catch (error) {
+      console.error("NSFW Reply Error:", error);
+      let errMsg = "Error! ";
+      if (error.response) errMsg += `API: ${error.response.status}`;
+      else errMsg += error.message;
+      return message.reply(errMsg + "\nLimit বা key issue হতে পারে।");
+    }
+  }
 };

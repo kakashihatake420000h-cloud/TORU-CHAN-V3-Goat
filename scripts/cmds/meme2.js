@@ -9,7 +9,7 @@ module.exports = {
     author: "Hridoy",
     role: 0,
     shortDescription: "Random meme 😆",
-    category: "Fun",
+    category: "Image",
     guide: "{pn}",
     cooldown: 5
   },

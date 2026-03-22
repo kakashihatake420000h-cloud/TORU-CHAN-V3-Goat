@@ -110,6 +110,7 @@ module.exports = {
     const gifURLs = [
       "https://i.imgur.com/Xw6JTfn.gif",
       "https://i.imgur.com/KUFxWlF.gif",
+      "https://i.imgur.com/KrEez4A.gif",
       "https://i.imgur.com/FV9krHV.gif",
       "https://i.imgur.com/lFrFMEn.gif",
       "https://i.imgur.com/KbcCZv2.gif",
