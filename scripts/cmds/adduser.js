@@ -4,8 +4,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 module.exports = {
 	config: {
 		name: "adduser",
-		version: "1.5",
-		author: "NTKhang",
+		version: "1.6",
+		author: "NTKhang + Hridoy",
 		countDown: 5,
 		role: 1,
 		description: {
@@ -14,7 +14,7 @@ module.exports = {
 		},
 		category: "Group",
 		guide: {
-			en: "   {pn} [link profile | uid]"
+			en: "   {pn} [link profile | uid]\n   or reply a user"
 		}
 	},
 
@@ -46,19 +46,13 @@ module.exports = {
 		const botID = api.getCurrentUserID();
 
 		const success = [
-			{
-				type: "success",
-				uids: []
-			},
-			{
-				type: "waitApproval",
-				uids: []
-			}
+			{ type: "success", uids: [] },
+			{ type: "waitApproval", uids: [] }
 		];
 		const failed = [];
 
 		function checkErrorAndPush(messageError, item) {
-			item = item.replace(/(?:https?:\/\/)?(?:www\.)?(?:facebook|fb|m\.facebook)\.(?:com|me)/i, '');
+			item = item?.toString() || "unknown";
 			const findType = failed.find(error => error.type == messageError);
 			if (findType)
 				findType.uids.push(item);
@@ -69,7 +63,25 @@ module.exports = {
 				});
 		}
 
+		// 🔥 ADD THIS PART (REPLY SYSTEM)
+		if (event.messageReply) {
+			const uid = event.messageReply.senderID;
+
+			if (members.some(m => m.userID == uid && m.inGroup)) {
+				return message.reply(getLang("alreadyInGroup"));
+			}
+
+			try {
+				await api.addUserToGroup(uid, event.threadID);
+				return message.reply("✅ User added from reply 😎");
+			} catch (err) {
+				return message.reply(getLang("cannotAddUser"));
+			}
+		}
+		// 🔥 END REPLY SYSTEM
+
 		const regExMatchFB = /(?:https?:\/\/)?(?:www\.)?(?:facebook|fb|m\.facebook)\.(?:com|me)\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[\w\-]*\/)*([\w\-\.]+)(?:\/)?/i;
+
 		for (const item of args) {
 			let uid;
 			let continueLoop = false;
@@ -79,20 +91,12 @@ module.exports = {
 					try {
 						uid = await findUid(item);
 						break;
-					}
-					catch (err) {
+					} catch (err) {
 						if (err.name == "SlowDown" || err.name == "CannotGetData") {
 							await sleep(1000);
 							continue;
-						}
-						else if (i == 9 || (err.name != "SlowDown" && err.name != "CannotGetData")) {
-							checkErrorAndPush(
-								err.name == "InvalidLink" ? getLang('invalidLink') :
-									err.name == "CannotGetData" ? getLang('cannotGetUid') :
-										err.name == "LinkNotExist" ? getLang('linkNotExist') :
-											err.message,
-								item
-							);
+						} else {
+							checkErrorAndPush(getLang("cannotGetUid"), item);
 							continueLoop = true;
 							break;
 						}
@@ -104,8 +108,7 @@ module.exports = {
 			else
 				continue;
 
-			if (continueLoop == true)
-				continue;
+			if (continueLoop) continue;
 
 			if (members.some(m => m.userID == uid && m.inGroup)) {
 				checkErrorAndPush(getLang("alreadyInGroup"), item);
@@ -124,17 +127,14 @@ module.exports = {
 			}
 		}
 
-		const lengthUserSuccess = success[0].uids.length;
-		const lengthUserWaitApproval = success[1].uids.length;
-		const lengthUserError = failed.length;
-
 		let msg = "";
-		if (lengthUserSuccess)
-			msg += `${getLang("successAdd", lengthUserSuccess)}\n`;
-		if (lengthUserWaitApproval)
-			msg += `${getLang("approve", lengthUserWaitApproval)}\n`;
-		if (lengthUserError)
-			msg += `${getLang("failedAdd", failed.reduce((a, b) => a + b.uids.length, 0))} ${failed.reduce((a, b) => a += `\n    + ${b.uids.join('\n       ')}: ${b.type}`, "")}`;
-		await message.reply(msg);
+		if (success[0].uids.length)
+			msg += `${getLang("successAdd", success[0].uids.length)}\n`;
+		if (success[1].uids.length)
+			msg += `${getLang("approve", success[1].uids.length)}\n`;
+		if (failed.length)
+			msg += `${getLang("failedAdd", failed.reduce((a, b) => a + b.uids.length, 0))}`;
+
+		await message.reply(msg || "⚠️ No valid user found!");
 	}
 };

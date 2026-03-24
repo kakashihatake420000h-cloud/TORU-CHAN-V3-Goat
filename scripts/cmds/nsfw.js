@@ -10,7 +10,7 @@ module.exports = {
     role: 0,  // 0 = সবাই, চাইলে 1 করে admin only করো
     shortDescription: "Interactive NSFW pic selector",
     longDescription: "NSFW category list দেখায়, তুমি reply করে category select করলে pic send করে। Nights API use করে।",
-    category: "nsfw",
+    category: "NSFW",
     guide: {
       bd: "{pn}\n\nCommand দিলে category list আসবে। Reply করে category নাম লিখো (যেমন: ass বা hentai)।"
     }
